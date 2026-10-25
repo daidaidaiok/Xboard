@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "已核实的误报：Google 公开测试 reCAPTCHA key、PEM 头字符串拼接、测试 fixture"
+paths = [
+  '''app/Http/Controllers/V2/Client/AppController\.php''',
+  '''plugins-core/AlipayF2f/library/AlipayF2F\.php''',
+  '''tests/.*''',
+]
