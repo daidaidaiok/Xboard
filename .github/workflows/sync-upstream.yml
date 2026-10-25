@@ -1,0 +1,40 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 每天 09:00 (UTC+8)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge upstream into sync branch and open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/cedar2025/Xboard.git
+          git fetch upstream master
+          if git merge-base --is-ancestor upstream/master origin/master; then
+            echo "已是最新"; exit 0
+          fi
+          git checkout -B upstream-sync origin/master
+          if ! git merge --no-edit upstream/master; then
+            git merge --abort
+            echo "::error::与上游合并冲突，需要手动处理"; exit 1
+          fi
+          git push --force origin upstream-sync
+          if [ -z "$(gh pr list --head upstream-sync --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --base master --head upstream-sync \
+              --title "chore: sync upstream cedar2025/Xboard" \
+              --body "自动同步上游 master。合并前请先看 diff 与 Security Audit 结果。"
+          fi
