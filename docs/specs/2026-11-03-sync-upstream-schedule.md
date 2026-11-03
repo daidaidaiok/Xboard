@@ -10,10 +10,15 @@ during high load, especially at the start of an hour, and recommends scheduling
 at a different minute.
 
 Runs have also failed since 2026-10-29 when they attempted to create an upstream
-sync PR. The failure is `Resource not accessible by integration (createPullRequest)`;
-the repository's workflow permission setting does not allow `GITHUB_TOKEN` to
-create pull requests. This is separate from schedule delivery and requires an
-explicit repository-level permission decision, so it is not changed here.
+sync PR. The failure was `Resource not accessible by integration
+(createPullRequest)` because the repository disallowed Actions from creating
+pull requests. After explicit approval, the repository setting was enabled;
+the default `GITHUB_TOKEN` permissions remain read-only, while the workflow
+continues to declare its existing job-specific permissions.
+
+The PR's `composer audit --locked` check also exposed `symfony/mime` v7.4.19
+affected by CVE-2026-45070. The lockfile now uses the fixed v7.4.22 release and
+the compatible `symfony/polyfill-mbstring` v1.43.3.
 
 ## Decision
 
@@ -21,12 +26,16 @@ Move the daily cron from `01:00 UTC` to `01:17 UTC`. This follows GitHub's
 documented mitigation for top-of-hour schedule congestion. It reduces exposure
 to the known high-load minute but does not guarantee exact-time delivery.
 
+Update the minimum dependency set needed to clear the newly surfaced Composer
+advisory. Enable the repository Actions PR-creation setting while keeping
+`default_workflow_permissions` at `read`.
+
 ## Alternatives considered
 
 1. Keep `01:00 UTC`: no source change and no mitigation for documented queue
    congestion.
-2. Move to `01:17 UTC` (selected): minimal schedule-only change with low
-   operational risk.
+2. Move to `01:17 UTC` (selected): minimal schedule change with low operational
+   risk.
 3. Add an external watchdog or a separate retry workflow: broader operational
    scope and unnecessary for the observed schedule delay.
 
@@ -36,5 +45,7 @@ to the known high-load minute but does not guarantee exact-time delivery.
 - [x] `workflow_dispatch`, permissions, and sync behavior remain unchanged.
 - [x] A static regression check verifies the cron expression and the diff passes
   whitespace validation.
-- [x] Record that scheduled execution remains best-effort and that PR creation
-  still requires the repository's explicit Actions PR permission setting.
+- [x] `composer audit --locked` passes with the fixed Symfony MIME version.
+- [x] The Actions PR-creation setting is enabled and the default token permission
+  remains `read`.
+- [x] Record that scheduled execution remains best-effort.
