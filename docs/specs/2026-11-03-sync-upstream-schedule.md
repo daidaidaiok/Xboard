@@ -20,6 +20,11 @@ The PR's `composer audit --locked` check also exposed `symfony/mime` v7.4.19
 affected by CVE-2026-45070. The lockfile now uses the fixed v7.4.22 release and
 the compatible `symfony/polyfill-mbstring` v1.43.3.
 
+After the Composer advisory was fixed, Gitleaks failed because the security
+workflow's checkout had only the triggering commit and could not resolve the
+requested parent range (`cd48a59^`). The checkout now fetches full history so
+the secret scan can inspect the complete PR range.
+
 ## Decision
 
 Move the daily cron from `01:00 UTC` to `01:17 UTC`. This follows GitHub's
@@ -29,6 +34,10 @@ to the known high-load minute but does not guarantee exact-time delivery.
 Update the minimum dependency set needed to clear the newly surfaced Composer
 advisory. Enable the repository Actions PR-creation setting while keeping
 `default_workflow_permissions` at `read`.
+
+Set `fetch-depth: 0` for the security-audit checkout, and enable repository
+auto-merge after explicit approval while leaving the default token permission
+read-only.
 
 ## Alternatives considered
 
@@ -48,4 +57,6 @@ advisory. Enable the repository Actions PR-creation setting while keeping
 - [x] `composer audit --locked` passes with the fixed Symfony MIME version.
 - [x] The Actions PR-creation setting is enabled and the default token permission
   remains `read`.
+- [x] The security-audit checkout fetches full history for Gitleaks.
+- [x] Repository auto-merge is enabled after explicit approval.
 - [x] Record that scheduled execution remains best-effort.
