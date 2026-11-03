@@ -1,0 +1,40 @@
+# Sync Upstream schedule mitigation
+
+## Context
+
+Linear HPB-4257 was opened after the `sync-upstream.yml` workflow had no observed
+`schedule` run on 2026-10-26. Current GitHub evidence shows daily schedule runs
+from 2026-10-26 through 2026-11-03, but they started 4h47m–6h35m after the
+configured 01:00 UTC time. GitHub documents that scheduled events may be delayed
+during high load, especially at the start of an hour, and recommends scheduling
+at a different minute.
+
+Runs have also failed since 2026-10-29 when they attempted to create an upstream
+sync PR. The failure is `Resource not accessible by integration (createPullRequest)`;
+the repository's workflow permission setting does not allow `GITHUB_TOKEN` to
+create pull requests. This is separate from schedule delivery and requires an
+explicit repository-level permission decision, so it is not changed here.
+
+## Decision
+
+Move the daily cron from `01:00 UTC` to `01:17 UTC`. This follows GitHub's
+documented mitigation for top-of-hour schedule congestion. It reduces exposure
+to the known high-load minute but does not guarantee exact-time delivery.
+
+## Alternatives considered
+
+1. Keep `01:00 UTC`: no source change and no mitigation for documented queue
+   congestion.
+2. Move to `01:17 UTC` (selected): minimal schedule-only change with low
+   operational risk.
+3. Add an external watchdog or a separate retry workflow: broader operational
+   scope and unnecessary for the observed schedule delay.
+
+## Acceptance
+
+- [x] `sync-upstream.yml` schedules daily at `01:17 UTC` (`09:17 UTC+8`).
+- [x] `workflow_dispatch`, permissions, and sync behavior remain unchanged.
+- [x] A static regression check verifies the cron expression and the diff passes
+  whitespace validation.
+- [x] Record that scheduled execution remains best-effort and that PR creation
+  still requires the repository's explicit Actions PR permission setting.
